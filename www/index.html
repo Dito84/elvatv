@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, orientation=landscape">
+  <title>Elva Tv</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f0f14;
+      color: #e0e0e0;
+      padding: 10px;
+      height: 100vh;
+      overflow: hidden;
+      touch-action: manipulation;
+    }
+    .screen {
+      display: none;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      flex-direction: column;
+    }
+    .screen.active {
+      display: flex;
+    }
+
+    /* Botones de navegación */
+    .nav-buttons {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+    }
+    .nav-btn {
+      padding: 6px 12px;
+      background: #1a1a2e;
+      color: #00bfff;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85em;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+    .nav-btn:hover,
+    .nav-btn:focus {
+      background: #00bfff;
+      color: #1a1a2e;
+    }
+
+    /* Botones de canales */
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+    }
+    .channel-btn {
+      background: #1e1e2e;
+      border-radius: 10px;
+      padding: 10px;
+      width: 130px;
+      text-align: center;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .channel-btn:hover,
+    .channel-btn:focus,
+    .channel-btn:active {
+      transform: scale(1.03);
+    }
+    .logo {
+      width: 100%;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 6px;
+      background: #000;
+      margin-bottom: 6px;
+    }
+    .name {
+      font-weight: bold;
+      color: white;
+      margin: 3px 0;
+      font-size: 0.85em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tipo {
+      font-size: 0.7em;
+      color: #00bfff;
+      background: rgba(0, 191, 255, 0.1);
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+
+    /* Diseño TV: dos columnas */
+    .dual-container {
+      display: flex;
+      gap: 15px;
+      flex: 1;
+      min-height: 0;
+    }
+    .left-panel {
+      flex: 1;
+      background: #1a1a2e;
+      border-radius: 10px;
+      padding: 12px;
+      overflow-y: auto;
+      max-height: none;
+      height: 100%;
+    }
+    .right-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow: hidden;
+    }
+    #video-player {
+      width: 100%;
+      max-width: 600px;
+      border-radius: 10px;
+      background: #000;
+    }
+    .current-channel {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+      padding: 10px;
+      background: #1a1a2e;
+      border-radius: 8px;
+      width: 100%;
+      max-width: 600px;
+    }
+    .current-channel img {
+      width: 40px;
+      height: 40px;
+      border-radius: 6px;
+    }
+    .current-channel .name {
+      font-size: 1.1em;
+      color: white;
+      font-weight: bold;
+    }
+
+    /* Lista de canales */
+    .group-list, .channel-list {
+      list-style: none;
+    }
+    .group-btn {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      background: #16213e;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      margin: 6px 0;
+      cursor: pointer;
+      text-align: left;
+      font-size: 0.9em;
+      border-left: 4px solid #00bfff;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+    .group-btn:hover,
+    .group-btn:focus {
+      background: #00bfff;
+      color: #1a1a2e;
+    }
+    .channel-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      background: #16213e;
+      margin: 6px 0;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .channel-item:hover,
+    .channel-item:focus,
+    .channel-item:active {
+      background: #00bfff;
+    }
+    .channel-item img {
+      width: 30px;
+      height: 30px;
+      object-fit: contain;
+    }
+    .channel-item .text {
+      font-size: 0.9em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .favorite {
+      margin-left: auto;
+      color: gold;
+      font-weight: bold;
+      font-size: 1.1em;
+      cursor: pointer;
+    }
+
+    /* Galería de películas */
+    .peliculas-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 12px;
+      padding: 10px 0;
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      max-height: none;
+    }
+    .pelicula-item {
+      background: #1a1a2e;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+      height: 200px;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.2s ease;
+    }
+    .pelicula-item:hover,
+    .pelicula-item:focus,
+    .pelicula-item:active {
+      transform: scale(1.03);
+    }
+    .pelicula-item img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+      border-bottom: 1px solid #333;
+    }
+    .pelicula-item .title {
+      padding: 6px;
+      font-size: 0.78em;
+      color: white;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Buscador de películas */
+    .search-peliculas {
+      display: flex;
+      margin-bottom: 10px;
+    }
+    .search-peliculas input {
+      flex: 1;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      background: #1a1a2e;
+      color: white;
+      font-size: 0.9em;
+    }
+
+    /* Reproductor de películas */
+    .pelicula-landscape {
+      display: flex;
+      margin-bottom: 10px;
+      min-width: 350px;
+      height: 170px;
+      overflow: hidden;
+    }
+    .pelicula-info {
+      flex: 0 0 30%;
+      max-width: 30%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #1a1a2e;
+      border-radius: 10px;
+      padding: 6px;
+      text-align: center;
+      min-width: 0;
+      height: 170px;
+      overflow: hidden;
+      justify-content: flex-start;
+      gap: 4px;
+    }
+    .pelicula-info img {
+      width: 100%;
+      max-width: 80px;
+      height: 110px;
+      object-fit: cover;
+      border-radius: 6px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+      flex-shrink: 0;
+    }
+    .pelicula-info .title {
+      font-size: clamp(0.6em, 2.5vw, 0.75em);
+      font-weight: bold;
+      margin: 4px 0 0 0;
+      color: white;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      width: 100%;
+      flex-shrink: 0;
+    }
+    .pelicula-player {
+      flex: 0 0 70%;
+      max-width: 70%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-left: 6px;
+    }
+
+    /* Contenedor del video */
+    .video-wrapper {
+      position: relative;
+      width: 100%;
+      height: 169px;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 1px;
+    }
+    #videoPlayer {
+      width: 100%;
+      height: 100%;
+      background: #000;
+    }
+
+    /* Spinner de carga */
+    .loading-video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #00bfff;
+      font-size: 0.9em;
+      z-index: 10;
+      border-radius: 10px;
+    }
+    .spinner {
+      border: 4px solid #333;
+      border-top: 4px solid #00bfff;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      animation: spin 1s linear infinite;
+      margin-right: 6px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Recomendaciones */
+    .recomendaciones {
+      text-align: center;
+      margin-top: 6px;
+    }
+    .grid-recom {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .recom-item {
+      cursor: pointer;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+    .recom-item img {
+      width: 100%;
+      height: 75px;
+      object-fit: cover;
+    }
+    .recom-item .title {
+      font-size: 0.6em;
+      text-align: center;
+      color: white;
+      padding: 2px;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) and (orientation: landscape) {
+      .pelicula-landscape {
+        height: 170px;
+      }
+      .pelicula-info {
+        height: 170px;
+      }
+      .pelicula-info img {
+        max-width: 80px;
+        height: 110px;
+      }
+      .video-wrapper {
+        height: 169px;
+      }
+      .grid-recom {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+      }
+      .recom-item img {
+        height: 75px;
+      }
+    }
+
+    @media (max-width: 900px) and (orientation: portrait) {
+      .pelicula-landscape {
+        flex-direction: column;
+        align-items: center;
+        min-width: auto;
+        height: auto;
+        overflow: visible;
+      }
+      .pelicula-info, .pelicula-player {
+        flex: none;
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+      }
+      .pelicula-player {
+        margin-top: 10px;
+        padding-left: 0;
+      }
+      .video-wrapper {
+        width: 100%;
+        max-width: 300px;
+        height: 169px;
+      }
+      .grid-recom {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    /* === TAMAÑOS MAYORES EN TV (pantallas grandes) === */
+    @media (min-width: 1200px) {
+      .channel-btn {
+        width: 180px;
+        padding: 15px;
+      }
+      .channel-btn .name {
+        font-size: 1em;
+      }
+      .logo {
+        height: 100px;
+      }
+      .container {
+        gap: 16px;
+      }
+      .pelicula-item {
+        height: 220px;
+      }
+      .pelicula-item img {
+        height: 160px;
+      }
+      .pelicula-item .title {
+        font-size: 0.85em;
+      }
+    }
+
+    /* === FOCUS VISIBLE (para control remoto) === */
+    .channel-btn:focus,
+    .group-btn:focus,
+    .channel-item:focus,
+    .pelicula-item:focus,
+    .nav-btn:focus,
+    .recom-item:focus {
+      outline: 3px solid #00bfff;
+      outline-offset: 2px;
+      background: #00bfff;
+      color: #1a1a2e;
+      transform: scale(1.08);
+      z-index: 2;
+    }
+
+    /* === TOQUE: feedback táctil === */
+    @media (hover: none) {
+      .channel-btn:active,
+      .group-btn:active,
+      .channel-item:active,
+      .pelicula-item:active,
+      .nav-btn:active {
+        transform: scale(0.95);
+        opacity: 0.9;
+      }
+    }
+
+    .loading {
+      text-align: center;
+      color: #00bfff;
+      padding: 20px;
+      font-size: 0.95em;
+    }
+
+    .error {
+      background: rgba(0, 0, 0, 0.9);
+      color: #ff4040;
+      font-weight: bold;
+      margin: 15px auto;
+      padding: 15px 20px;
+      border-radius: 10px;
+      max-width: 80%;
+      text-align: center;
+      line-height: 1.6;
+    }
+
+    /* Evitar selección accidental */
+    body {
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Pantalla 1: Inicio -->
+  <div id="home-screen" class="screen active">
+    <h1>📺 ElvaTv</h1>
+    <div id="channels" class="container">
+      <p class="loading">Cargando canales...</p>
+    </div>
+  </div>
+
+  <!-- Pantalla 2: Reproductor TV -->
+  <div id="m3u-screen" class="screen">
+    <div class="nav-buttons">
+      <div class="nav-btn" tabindex="0" onclick="goBackToGroups()">🔙 Categorías</div>
+      <div class="nav-btn" tabindex="0" onclick="goHome()">🏠 Inicio</div>
+    </div>
+    <div class="dual-container">
+      <div class="left-panel">
+        <div id="group-view">
+          <h3>Categorías</h3>
+          <ul id="group-list" class="group-list"></ul>
+        </div>
+        <div id="channel-view" style="display: none;">
+          <h3 id="channel-group-title">Canales</h3>
+          <input type="text" id="search-input" class="search-box" placeholder="Buscar canal..." oninput="filterChannels()">
+          <ul id="channel-list" class="channel-list"></ul>
+        </div>
+      </div>
+      <div class="right-panel">
+        <video id="video-player" controls></video>
+        <div class="current-channel" id="current-info" style="display: none;">
+          <img id="current-logo" src="" alt="Logo">
+          <div class="name" id="current-name">Canal</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pantalla 3: Galería de Películas -->
+  <div id="peliculas-screen" class="screen">
+    <div class="nav-buttons">
+      <div class="nav-btn" tabindex="0" onclick="goHome()">🏠 Inicio</div>
+    </div>
+    <div class="search-peliculas">
+      <input type="text" id="search-peliculas" placeholder="Buscar película..." oninput="filterPeliculas()">
+    </div>
+    <div class="peliculas-grid" id="peliculas-grid">
+      <p class="loading">Cargando películas...</p>
+    </div>
+  </div>
+
+  <!-- Pantalla 4: Reproductor de Películas -->
+  <div id="pelicula-player" class="screen">
+    <div class="nav-buttons" style="display: flex; justify-content: space-between;">
+      <div class="nav-btn" tabindex="0" onclick="goBackToPeliculas()">🔙 Volver</div>
+      <div class="nav-btn" tabindex="0" onclick="toggleFullscreen()">⛶ Pantalla completa</div>
+    </div>
+
+    <div class="pelicula-landscape">
+      <div class="pelicula-info">
+        <img id="current-movie-poster" src="" alt="Poster">
+        <div class="title" id="current-movie-title">Cargando...</div>
+      </div>
+      <div class="pelicula-player">
+        <div class="video-wrapper">
+          <video id="videoPlayer" controls></video>
+          <div id="loading-spinner" class="loading-video">
+            <div class="spinner"></div> Cargando...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="recomendaciones">
+      <div class="grid-recom" id="recomendaciones-grid"></div>
+    </div>
+
+    <div id="error" class="error" style="display: none;"></div>
+  </div>
+
+  <script>
+    // === CONFIGURACIÓN DEL PROXY Y JSON (limpio) ===
+    const PROXY_URL = 'https://video-proxy-bk4j.onrender.com/proxy'.trim();
+    const JSON_URL = 'https://raw.githubusercontent.com/Dito84/NDQVER/main/canales.json'.trim();
+    
+    let hls = null;
+    let favorites = [];
+    let allChannels = [];
+    let allMovies = [];
+
+    // Cargar lista de canales
+    async function cargarLista() {
+      const container = document.getElementById('channels');
+      container.innerHTML = '<p class="loading">Cargando canales...</p>';
+
+      try {
+        console.log('📡 Cargando JSON desde:', JSON_URL);
+        const response = await fetch(JSON_URL);
+
+        if (!response.ok) {
+          throw new Error(`Error HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        if (!Array.isArray(data)) {
+          throw new Error('El archivo JSON no es un array válido');
+        }
+
+        console.log('✅ Datos cargados:', data.length, 'elementos');
+
+        container.innerHTML = '';
+
+        data.forEach(item => {
+          const { name, logo_url, m3u_url, tipo } = item || {};
+          const cleanLogo = (logo_url || '').trim();
+          const cleanM3U = (m3u_url || '').trim();
+
+          // Validar datos mínimos
+          if (!name || !tipo || !cleanM3U) {
+            console.warn('Elemento omitido (datos incompletos):', item);
+            return;
+          }
+
+          const boton = document.createElement('div');
+          boton.className = 'channel-btn';
+          boton.tabIndex = 0;
+          boton.setAttribute('role', 'button');
+          boton.innerHTML = `
+            <img class="logo" src="${cleanLogo.replace(/^http:/, 'https:') || 'https://placehold.co/130x80/333/fff?text=📺'}" alt="${name}">
+            <div class="name">${name}</div>
+            <div class="tipo">${tipo}</div>
+          `;
+          boton.onclick = () => {
+            if (tipo === 'Tv') {
+              loadM3U(cleanM3U, name);
+            } else if (tipo === 'Peliculas') {
+              loadPeliculas(cleanM3U, name);
+            } else {
+              alert('Tipo no soportado: ' + tipo);
+            }
+          };
+          container.appendChild(boton);
+        });
+
+        setTimeout(initNavigation, 600);
+      } catch (error) {
+        console.error('❌ Error al cargar canales:', error);
+        container.innerHTML = `
+          <div class="error">
+            <strong>❌ No se pudieron cargar los canales</strong><br>
+            ${error.message}
+          </div>
+        `;
+      }
+    }
+
+    // === Cargar M3U para TV ===
+    async function loadM3U(url, name) {
+      const cleanUrl = url.trim();
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById('m3u-screen').classList.add('active');
+
+      const groupList = document.getElementById('group-list');
+      groupList.innerHTML = '<li class="loading">Cargando categorías...</li>';
+
+      try {
+        console.log('📡 Cargando M3U:', cleanUrl);
+        const response = await fetch(cleanUrl);
+        const text = await response.text();
+        const lines = text.split('\n');
+        const groups = {};
+        let currentGroup = 'General';
+
+        allChannels = [];
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (line.startsWith('#EXTINF:')) {
+            const groupMatch = line.match(/group-title="([^"]*)"/i);
+            if (groupMatch) currentGroup = groupMatch[1];
+            if (!groups[currentGroup]) groups[currentGroup] = [];
+
+            const nameMatch = line.match(/,(.+)$/);
+            const channelName = nameMatch ? nameMatch[1].trim() : 'Sin nombre';
+
+            const streamUrl = lines[i + 1]?.trim();
+            if (streamUrl && streamUrl.startsWith('http')) {
+              // ✅ Soporta comillas simples y dobles + convierte a HTTPS
+              const logoMatch = line.match(/tvg-logo=['"]([^'"]*)['"]/i);
+              const rawLogo = logoMatch ? logoMatch[1].trim() : '';
+              const logo = rawLogo 
+                ? rawLogo.replace(/^http:/, 'https:') 
+                : 'https://placehold.co/30x30/333/fff?text=📺';
+
+              const channel = { name: channelName, url: streamUrl, logo };
+              groups[currentGroup].push(channel);
+              allChannels.push({ ...channel, group: currentGroup });
+            }
+          }
+        }
+
+        groupList.innerHTML = '';
+        Object.keys(groups).forEach(group => {
+          const li = document.createElement('li');
+          const btn = document.createElement('button');
+          btn.className = 'group-btn';
+          btn.tabIndex = 0;
+          btn.textContent = `${group} (${groups[group].length})`;
+          btn.onclick = () => showChannels(groups[group], group);
+          li.appendChild(btn);
+          groupList.appendChild(li);
+        });
+
+        setTimeout(initNavigation, 600);
+      } catch (error) {
+        console.error('❌ Error al cargar M3U:', error);
+        groupList.innerHTML = `<li class="error">❌ ${error.message}</li>`;
+      }
+    }
+
+    function showChannels(canales, groupName) {
+      document.getElementById('group-view').style.display = 'none';
+      document.getElementById('channel-view').style.display = 'block';
+      document.getElementById('channel-group-title').textContent = `Canales - ${groupName}`;
+      document.getElementById('search-input').value = '';
+
+      const channelList = document.getElementById('channel-list');
+      channelList.innerHTML = '';
+
+      canales.forEach(canal => {
+        const isFav = favorites.some(f => f.url === canal.url);
+        const li = document.createElement('li');
+        li.className = 'channel-item';
+        li.tabIndex = 0;
+        li.setAttribute('role', 'button');
+        li.innerHTML = `
+          <img src="${canal.logo}" onerror="this.onerror=null;this.src='https://placehold.co/30x30/333/fff?text=📺'" style="width:30px;height:30px;object-fit:contain;">
+          <div class="text">${canal.name}</div>
+          <div class="favorite" onclick="toggleFavorite(event, '${canal.name}', '${canal.url}', '${canal.logo}')">${isFav ? '★' : '☆'}</div>
+        `;
+        li.onclick = (e) => {
+          if (!e.target.classList.contains('favorite')) {
+            playChannel(canal.url, canal.name, canal.logo);
+          }
+        };
+        channelList.appendChild(li);
+      });
+      setTimeout(initNavigation, 600);
+    }
+
+    function filterChannels() {
+      const term = document.getElementById('search-input').value.toLowerCase();
+      const filtered = allChannels.filter(ch => ch.name.toLowerCase().includes(term));
+      const channelList = document.getElementById('channel-list');
+      channelList.innerHTML = '';
+
+      filtered.forEach(canal => {
+        const isFav = favorites.some(f => f.url === canal.url);
+        const li = document.createElement('li');
+        li.className = 'channel-item';
+        li.tabIndex = 0;
+        li.setAttribute('role', 'button');
+        li.innerHTML = `
+          <img src="${canal.logo}" onerror="this.onerror=null;this.src='https://placehold.co/30x30/333/fff?text=📺'" style="width:30px;height:30px;object-fit:contain;">
+          <div class="text">${canal.name}</div>
+          <div class="favorite" onclick="toggleFavorite(event, '${canal.name}', '${canal.url}', '${canal.logo}')">${isFav ? '★' : '☆'}</div>
+        `;
+        li.onclick = (e) => {
+          if (!e.target.classList.contains('favorite')) {
+            playChannel(canal.url, canal.name, canal.logo);
+          }
+        };
+        channelList.appendChild(li);
+      });
+      setTimeout(initNavigation, 600);
+    }
+
+    function toggleFavorite(e, name, url, logo) {
+      e.stopPropagation();
+      const index = favorites.findIndex(f => f.url === url);
+      if (index === -1) {
+        favorites.push({ name, url, logo });
+      } else {
+        favorites.splice(index, 1);
+      }
+      const currentGroup = document.getElementById('channel-group-title').textContent.replace('Canales - ', '');
+      const channels = allChannels.filter(ch => ch.group === currentGroup);
+      showChannels(channels, currentGroup);
+    }
+
+    function playChannel(url, name, logo) {
+      const video = document.getElementById('video-player');
+      const info = document.getElementById('current-info');
+      const logoEl = document.getElementById('current-logo');
+      const nameEl = document.getElementById('current-name');
+
+      if (hls) hls.destroy();
+      hls = null;
+
+      const cleanUrl = url.trim();
+
+      if (cleanUrl.includes('.m3u8')) {
+        if (Hls.isSupported()) {
+          hls = new Hls();
+          hls.loadSource(cleanUrl);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            video.play().catch(err => console.warn('Auto-play bloqueado:', err));
+          });
+        } else {
+          video.src = cleanUrl;
+          video.play().catch(err => console.warn('Auto-play bloqueado:', err));
+        }
+      } else {
+        video.src = cleanUrl;
+        video.play().catch(err => console.warn('Auto-play bloqueado:', err));
+      }
+
+      // ✅ Asegurar HTTPS en logo
+      logoEl.src = logo.replace(/^http:/, 'https:');
+      nameEl.textContent = name;
+      info.style.display = 'flex';
+    }
+
+    async function loadPeliculas(url, name) {
+      const cleanUrl = url.trim();
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById('peliculas-screen').classList.add('active');
+
+      const input = document.getElementById('search-peliculas');
+      input.value = '';
+
+      const grid = document.getElementById('peliculas-grid');
+      grid.innerHTML = '<p class="loading">Cargando películas...</p>';
+
+      try {
+        console.log('📡 Cargando películas desde:', cleanUrl);
+        const response = await fetch(cleanUrl);
+        const text = await response.text();
+        const lines = text.split('\n');
+        const peliculas = [];
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (line.startsWith('#EXTINF:')) {
+            const nameMatch = line.match(/,(.+)$/);
+            const movieName = nameMatch ? nameMatch[1].trim() : 'Sin nombre';
+            const streamUrl = lines[i + 1]?.trim();
+
+            if (streamUrl && streamUrl.startsWith('http')) {
+              const logoMatch = line.match(/tvg-logo=['"]([^'"]*)['"]/i);
+              const rawLogo = logoMatch ? logoMatch[1].trim() : '';
+              const logo = rawLogo 
+                ? rawLogo.replace(/^http:/, 'https:') 
+                : 'https://placehold.co/300x450/333/fff?text=Película';
+              peliculas.push({ name: movieName, url: streamUrl, logo });
+            }
+          }
+        }
+
+        if (peliculas.length === 0) {
+          grid.innerHTML = '<p>No hay películas.</p>';
+          return;
+        }
+
+        allMovies = [...peliculas];
+        showAllPeliculas();
+        setTimeout(initNavigation, 600);
+      } catch (error) {
+        console.error('❌ Error al cargar películas:', error);
+        grid.innerHTML = `<p class="error">❌ ${error.message}</p>`;
+      }
+    }
+
+    function showAllPeliculas() {
+      const grid = document.getElementById('peliculas-grid');
+      grid.innerHTML = '';
+
+      allMovies.forEach(peli => {
+        const div = document.createElement('div');
+        div.className = 'pelicula-item';
+        div.tabIndex = 0;
+        div.setAttribute('role', 'button');
+        div.innerHTML = `
+          <img src="${peli.logo}" onerror="this.onerror=null;this.src='https://placehold.co/300x450/333/fff?text=🎬'" alt="${peli.name}">
+          <div class="title">${peli.name}</div>
+        `;
+        div.onclick = () => playMovie(peli.url, peli.name, peli.logo);
+        grid.appendChild(div);
+      });
+    }
+
+    function filterPeliculas() {
+      const term = document.getElementById('search-peliculas').value.toLowerCase();
+      const grid = document.getElementById('peliculas-grid');
+      grid.innerHTML = '';
+
+      const filtered = allMovies.filter(peli => peli.name.toLowerCase().includes(term));
+
+      if (filtered.length === 0) {
+        grid.innerHTML = '<p style="color: #888; text-align: center; padding: 20px;">No se encontraron películas</p>';
+        return;
+      }
+
+      filtered.forEach(peli => {
+        const div = document.createElement('div');
+        div.className = 'pelicula-item';
+        div.tabIndex = 0;
+        div.setAttribute('role', 'button');
+        div.innerHTML = `
+          <img src="${peli.logo}" onerror="this.onerror=null;this.src='https://placehold.co/300x450/333/fff?text=🎬'" alt="${peli.name}">
+          <div class="title">${peli.name}</div>
+        `;
+        div.onclick = () => playMovie(peli.url, peli.name, peli.logo);
+        grid.appendChild(div);
+      });
+      setTimeout(initNavigation, 600);
+    }
+
+    function playMovie(videoUrl, name, logo) {
+      if (!videoUrl || !name) {
+        document.getElementById('error').innerHTML = '❌ Datos incompletos';
+        document.getElementById('error').style.display = 'block';
+        return;
+      }
+
+      document.getElementById('peliculas-screen').classList.remove('active');
+      document.getElementById('pelicula-player').classList.add('active');
+
+      const video = document.getElementById('videoPlayer');
+      const poster = document.getElementById('current-movie-poster');
+      const title = document.getElementById('current-movie-title');
+      const errorDiv = document.getElementById('error');
+      const loadingSpinner = document.getElementById('loading-spinner');
+
+      hideError();
+      video.src = '';
+      loadingSpinner.style.display = 'flex';
+
+      // ✅ Asegurar HTTPS en logo de película
+      poster.src = (logo || 'https://placehold.co/80x110/333/fff?text=Película').replace(/^http:/, 'https:');
+      title.textContent = name;
+
+      const cleanUrl = videoUrl.trim();
+      const proxySrc = `${PROXY_URL}?url=${encodeURIComponent(cleanUrl)}`;
+      video.src = proxySrc;
+
+      video.onloadedmetadata = () => {
+        loadingSpinner.style.display = 'none';
+        video.play().catch(err => {
+          console.warn("Reproducción automática bloqueada:", err);
+          video.controls = true;
+        });
+      };
+
+      video.onerror = () => {
+        loadingSpinner.style.display = 'none';
+        showError('No se pudo cargar el video.');
+      };
+
+      showRandomRecommendations();
+      setTimeout(initNavigation, 600);
+    }
+
+    function showRandomRecommendations() {
+      const grid = document.getElementById('recomendaciones-grid');
+      grid.innerHTML = '';
+
+      if (!allMovies || allMovies.length === 0) return;
+
+      const shuffled = [...allMovies].sort(() => 0.5 - Math.random()).slice(0, 4);
+
+      shuffled.forEach(peli => {
+        const div = document.createElement('div');
+        div.className = 'recom-item';
+        div.tabIndex = 0;
+        div.setAttribute('role', 'button');
+        div.innerHTML = `
+          <img src="${peli.logo.replace(/^http:/, 'https:')}" alt="${peli.name}" onerror="this.onerror=null;this.src='https://placehold.co/75x75/333/fff?text=R'">
+          <div class="title">${peli.name}</div>
+        `;
+        div.onclick = () => playMovie(peli.url, peli.name, peli.logo);
+        grid.appendChild(div);
+      });
+    }
+
+    function showError(msg) {
+      const errorDiv = document.getElementById('error');
+      errorDiv.innerHTML = `<strong>❌ Error:</strong> ${msg}`;
+      errorDiv.style.display = 'block';
+    }
+
+    function hideError() {
+      document.getElementById('error').style.display = 'none';
+    }
+
+    function toggleFullscreen() {
+      const video = document.getElementById('videoPlayer');
+      if (video.requestFullscreen) {
+        video.requestFullscreen();
+      } else if (video.webkitRequestFullscreen) {
+        video.webkitRequestFullscreen();
+      } else {
+        alert('Pantalla completa no soportada.');
+      }
+    }
+
+    function goBackToPeliculas() {
+      const video = document.getElementById('videoPlayer');
+      video.pause();
+      video.src = '';
+      document.getElementById('pelicula-player').classList.remove('active');
+      document.getElementById('peliculas-screen').classList.add('active');
+      setTimeout(initNavigation, 600);
+    }
+
+    function goHome() {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById('home-screen').classList.add('active');
+      if (hls) hls.destroy();
+      hls = null;
+      setTimeout(initNavigation, 600);
+    }
+
+    function goBackToGroups() {
+      document.getElementById('channel-view').style.display = 'none';
+      document.getElementById('group-view').style.display = 'block';
+      setTimeout(initNavigation, 600);
+    }
+
+    // === NAVEGACIÓN UNIVERSAL ===
+    let currentFocus = null;
+
+    function initNavigation() {
+      const buttons = Array.from(document.querySelectorAll('.channel-btn, .nav-btn, .group-btn, .channel-item, .pelicula-item, .recom-item')).filter(b => b.offsetParent !== null);
+      if (buttons.length === 0) return;
+
+      const activeScreen = document.querySelector('.screen.active');
+      const firstInScreen = buttons.find(b => activeScreen.contains(b));
+      if (firstInScreen && (!currentFocus || !document.contains(currentFocus) || !buttons.includes(currentFocus))) {
+        firstInScreen.focus();
+        currentFocus = firstInScreen;
+      }
+    }
+
+    document.addEventListener('keydown', function(e) {
+      const buttons = Array.from(document.querySelectorAll('.channel-btn, .nav-btn, .group-btn, .channel-item, .pelicula-item, .recom-item')).filter(b => b.offsetParent !== null);
+      if (buttons.length === 0) return;
+
+      switch (e.key) {
+        case 'ArrowDown':
+        case 'ArrowUp':
+        case 'ArrowRight':
+        case 'ArrowLeft':
+          e.preventDefault();
+          const dir = e.key.replace('Arrow', '').toLowerCase();
+          const next = findNextFocus(dir);
+          if (next) next.focus();
+          break;
+
+        case 'Enter':
+        case ' ':
+          e.preventDefault();
+          if (currentFocus && typeof currentFocus.onclick === 'function') {
+            currentFocus.click();
+          }
+          break;
+
+        case 'Backspace':
+        case 'Escape':
+          e.preventDefault();
+          goBackOrHome();
+          break;
+      }
+    });
+
+    function findNextFocus(direction) {
+      const buttons = Array.from(document.querySelectorAll('.channel-btn, .nav-btn, .group-btn, .channel-item, .pelicula-item, .recom-item')).filter(b => b.offsetParent !== null);
+      if (!currentFocus || !buttons.includes(currentFocus)) return buttons[0];
+
+      const currentRect = currentFocus.getBoundingClientRect();
+      let bestMatch = null;
+      let bestScore = Infinity;
+
+      for (const btn of buttons) {
+        if (btn === currentFocus) continue;
+        const rect = btn.getBoundingClientRect();
+        const dx = rect.left - currentRect.left;
+        const dy = rect.top - currentRect.top;
+
+        if (
+          (direction === 'down' && dy > 10) ||
+          (direction === 'up' && dy < -10) ||
+          (direction === 'right' && dx > 10) ||
+          (direction === 'left' && dx < -10)
+        ) {
+          const score = Math.abs(dy) * 1000 + Math.abs(dx);
+          if (score < bestScore) {
+            bestScore = score;
+            bestMatch = btn;
+          }
+        }
+      }
+      return bestMatch || currentFocus;
+    }
+
+    function goBackOrHome() {
+      const player = document.getElementById('pelicula-player');
+      const peliculas = document.getElementById('peliculas-screen');
+      const m3u = document.getElementById('m3u-screen');
+
+      if (player.classList.contains('active')) goBackToPeliculas();
+      else if (peliculas.classList.contains('active')) goHome();
+      else if (m3u.classList.contains('active')) goBackToGroups();
+      else goHome();
+    }
+
+    document.addEventListener('focusin', (e) => {
+      if (e.target.matches('.channel-btn, .group-btn, .channel-item, .pelicula-item, .nav-btn, .recom-item')) {
+        currentFocus = e.target;
+      }
+    });
+
+    // Iniciar
+    cargarLista();
+  </script>
+</body>
+</html>
