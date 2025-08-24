@@ -7,12 +7,39 @@
   <description>Aplicación Elva TV empaquetada con Cordova</description>
   <author email="alditoade84@gmail.com" href="https://example.com">Elva TV</author>
 
+  <!-- Página principal -->
   <content src="index.html" />
 
+  <!-- Preferencias generales -->
   <preference name="fullscreen" value="true" />
   <preference name="orientation" value="landscape" />
   <preference name="AndroidInsecureFileModeEnabled" value="true" />
+  <preference name="loadUrlTimeoutValue" value="90000" />
+  <preference name="DisallowOverscroll" value="true" />
+  <preference name="BackupWebStorage" value="none" />
 
-  <allow-navigation href="*" />
+  <!-- Acceso a recursos externos -->
   <access origin="*" />
+  <allow-navigation href="*" />
+  <allow-intent href="*" />
+
+  <!-- Plugin de whitelist para manejar CORS y seguridad -->
+  <plugin name="cordova-plugin-whitelist" spec="1" />
+  
+  <!-- Opcional: plugin HTTP avanzado para TV Box con problemas de CORS -->
+  <plugin name="cordova-plugin-advanced-http" spec="3.0.0" />
+
+  <!-- Android -->
+  <platform name="android">
+    <allow-intent href="market:*" />
+    <allow-intent href="tel:*" />
+    <preference name="android-minSdkVersion" value="21" />
+    <preference name="android-targetSdkVersion" value="34" />
+    <icon density="mdpi" src="res/icons/mdpi.png" />
+    <icon density="hdpi" src="res/icons/hdpi.png" />
+    <icon density="xhdpi" src="res/icons/xhdpi.png" />
+    <icon density="xxhdpi" src="res/icons/xxhdpi.png" />
+    <icon density="xxxhdpi" src="res/icons/xxxhdpi.png" />
+  </platform>
+
 </widget>
