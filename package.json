@@ -1,0 +1,11 @@
+{
+  "name": "elvatv",
+  "displayName": "Elva TV",
+  "version": "1.0.0",
+  "description": "Aplicación Elva TV empaquetada con Cordova",
+  "author": "alditoade84@gmail.com",
+  "license": "MIT",
+  "dependencies": {
+    "cordova": "^12.0.0"
+  }
+}
