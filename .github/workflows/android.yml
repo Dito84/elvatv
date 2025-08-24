@@ -1,41 +1,55 @@
-name: Android Build
+name: Build ElvaTV Android
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
-  build:
+  build-android:
     runs-on: ubuntu-latest
+    env:
+      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
 
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
+    - name: Install Cordova
+      run: npm install -g cordova
 
-      - name: Install Cordova
-        run: npm install -g cordova
+    - name: Install Android SDK dependencies
+      run: |
+        yes | sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Build Android APK
-        run: |
-          cordova platform add android
-          cordova build android --release
+    - name: Add Android platform
+      run: cordova platform add android
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release
-          path: platforms/android/app/build/outputs/apk/release/*.apk
-          retention-days: 7
+    # Build APK
+    - name: Build APK (release)
+      run: cordova build android --release -- --packageType=apk
+
+    # Build AAB
+    - name: Build AAB (release)
+      run: cordova build android --release
+
+    # Upload APK
+    - name: Upload APK artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ElvaTV-APK
+        path: platforms/android/app/build/outputs/apk/release/*.apk
+
+    # Upload AAB
+    - name: Upload AAB artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ElvaTV-AAB
+        path: platforms/android/app/build/outputs/bundle/release/*.aab
