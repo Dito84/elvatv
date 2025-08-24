@@ -1,4 +1,4 @@
-name: Build Cordova Android Release
+name: Build Cordova Android APK
 
 on:
   workflow_dispatch:
@@ -7,46 +7,53 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
 
+    env:
+      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: 20
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
 
-    - name: Setup Java 17
-      uses: actions/setup-java@v3
-      with:
-        distribution: temurin
-        java-version: 17
+      - name: Install Cordova
+        run: npm install -g cordova
 
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v2
-      with:
-        api-level: 34
-        target: android-34
-        build-tools: 34.0.0
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+        with:
+          api-level: 34
+          target: android-34
+          arch: x64
+          ndk: 25.2.9519653
 
-    - name: Install Cordova
-      run: npm install -g cordova
+      - name: Add Android platform
+        run: cordova platform add android
 
-    - name: Install npm dependencies
-      run: npm install
+      - name: Build Android AAB
+        run: cordova build android --release
 
-    - name: Add Android platform
-      run: cordova platform add android@13.0.0
+      - name: Download bundletool
+        run: wget https://github.com/google/bundletool/releases/download/1.22.0/bundletool-all-1.22.0.jar -O bundletool.jar
 
-    - name: Build Android Release
-      run: |
-        export PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/emulator
-        cordova build android --release
+      - name: Generate universal APK from AAB
+        run: |
+          java -jar bundletool.jar build-apks \
+            --bundle=platforms/android/app/build/outputs/bundle/release/app-release.aab \
+            --output=app-release.apks \
+            --mode=universal \
+            --ks=my-release-key.jks \
+            --ks-key-alias=my-alias \
+            --ks-pass=pass:YOUR_KEYSTORE_PASSWORD \
+            --key-pass=pass:YOUR_KEY_PASSWORD
+          unzip -o app-release.apks '*.apk' -d output_apk
 
-    - name: Upload AAB/APK artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: elvatv-release
-        path: |
-          platforms/android/app/build/outputs/bundle/release/app-release.aab
-          platforms/android/app/build/outputs/apk/release/*.apk
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ElvaTV-APK
+          path: output_apk/*.apk
