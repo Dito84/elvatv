@@ -1,9 +1,6 @@
-name: Build ElvaTV Android
+name: Build Cordova Android Release
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
@@ -12,44 +9,50 @@ jobs:
     env:
       JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      PATH: ${{ env.PATH }}:/usr/local/lib/android/sdk/platform-tools:/usr/local/lib/android/sdk/cmdline-tools/latest/bin:/usr/local/lib/android/sdk/emulator
 
     steps:
+    # 1️⃣ Checkout del repositorio
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
+    # 2️⃣ Configurar Node.js
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: 20
 
+    # 3️⃣ Instalar Cordova global
     - name: Install Cordova
       run: npm install -g cordova
 
-    - name: Install Android SDK dependencies
-      run: |
-        yes | sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+    # 4️⃣ Instalar dependencias npm locales (si tienes package.json)
+    - name: Install npm dependencies
+      run: npm install
 
+    # 5️⃣ Añadir plataforma Android
     - name: Add Android platform
-      run: cordova platform add android
+      run: cordova platform add android@13.0.0
 
-    # Build APK
-    - name: Build APK (release)
-      run: cordova build android --release -- --packageType=apk
+    # 6️⃣ Comprobar instalación y versiones
+    - name: Debug environment
+      run: |
+        node -v
+        npm -v
+        cordova -v
+        java -version
+        echo $PATH
+        ls -la $ANDROID_SDK_ROOT
 
-    # Build AAB
-    - name: Build AAB (release)
+    # 7️⃣ Build Release
+    - name: Build Android Release
       run: cordova build android --release
 
-    # Upload APK
-    - name: Upload APK artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ElvaTV-APK
-        path: platforms/android/app/build/outputs/apk/release/*.apk
-
-    # Upload AAB
+    # 8️⃣ Subir AAB/Apk como artifact
     - name: Upload AAB artifact
       uses: actions/upload-artifact@v4
       with:
-        name: ElvaTV-AAB
-        path: platforms/android/app/build/outputs/bundle/release/*.aab
+        name: elvatv-release
+        path: |
+          platforms/android/app/build/outputs/bundle/release/app-release.aab
+          platforms/android/app/build/outputs/apk/release/*.apk
